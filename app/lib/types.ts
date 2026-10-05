@@ -8,6 +8,8 @@ export interface Slot {
   start: string;
   end: string;
   room?: string;
+  /** "YYYY-MM-DD" the slot joined the routine of a course already in use; it isn't expected before this. */
+  from?: string;
 }
 
 export interface Course {
