@@ -1,5 +1,5 @@
 import { useLiveQuery } from "dexie-react-hooks";
-import { Ban, CalendarDays, CalendarPlus, Check, ChevronLeft, ChevronRight, ListChecks, Sparkles, TriangleAlert } from "lucide-react";
+import { Ban, CalendarDays, CalendarPlus, Check, ChevronLeft, ChevronRight, ImagePlus, ListChecks, Sparkles, TriangleAlert } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import ClassCard from "~/components/ClassCard";
@@ -109,9 +109,14 @@ export default function Home() {
             title="Welcome! Let's set up your routine"
             body="Add your courses and their weekly class times. Then each day you can mark classes as attended, missed or cancelled, and track your percentage."
             action={
-              <Link to="/routine" className="btn-primary">
-                <CalendarDays className="size-4" /> Set up routine
-              </Link>
+              <div className="flex flex-col gap-2">
+                <Link to="/routine/import" className="btn-primary">
+                  <ImagePlus className="size-4" /> Import routine from photo
+                </Link>
+                <Link to="/routine" className="btn-secondary">
+                  <CalendarDays className="size-4" /> Set up manually
+                </Link>
+              </div>
             }
           />
         </div>
