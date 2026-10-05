@@ -1,5 +1,6 @@
-import { BookOpen, Clock, MapPin, Pencil, Plus, User } from "lucide-react";
+import { BookOpen, Clock, ImagePlus, MapPin, Pencil, Plus, User } from "lucide-react";
 import { useState } from "react";
+import { Link } from "react-router";
 import CourseForm from "~/components/CourseForm";
 import PageHeader, { EmptyState } from "~/components/PageHeader";
 import { DAY_LONG, formatTime, orderedWeekdays, todayISO, weekdayOf } from "~/lib/date";
@@ -37,9 +38,14 @@ export default function Routine() {
         title="Routine"
         subtitle={courses ? `${courses.length} course${courses.length === 1 ? "" : "s"} · ${totalSlots} classes a week` : " "}
         action={
-          <button className="btn-primary px-3" onClick={openNew}>
-            <Plus className="size-4" /> Course
-          </button>
+          <div className="flex gap-2">
+            <Link to="/routine/import" className="btn-secondary px-3" title="Import routine from photo">
+              <ImagePlus className="size-4" /> Import
+            </Link>
+            <button className="btn-primary px-3" onClick={openNew}>
+              <Plus className="size-4" /> Course
+            </button>
+          </div>
         }
       />
 
@@ -48,11 +54,16 @@ export default function Routine() {
           <EmptyState
             icon={<BookOpen className="size-6" />}
             title="Build your weekly routine"
-            body="Add each course with its weekly class times."
+            body="Import a photo or screenshot of your class routine, or add each course manually."
             action={
-              <button className="btn-primary" onClick={openNew}>
-                <Plus className="size-4" /> Add course
-              </button>
+              <div className="flex flex-col gap-2">
+                <Link to="/routine/import" className="btn-primary">
+                  <ImagePlus className="size-4" /> Import from photo
+                </Link>
+                <button className="btn-secondary" onClick={openNew}>
+                  <Plus className="size-4" /> Add manually
+                </button>
+              </div>
             }
           />
         ) : (
