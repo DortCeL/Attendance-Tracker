@@ -63,6 +63,7 @@ export function computeStats(
 
   let risk: RiskLevel;
   if (percent === null) risk = "none";
+  else if (t <= 0) risk = "safe";
   else if (percent < threshold) risk = "danger";
   else if (percent < threshold + warnMargin || oneMissFromDanger) risk = "warning";
   else risk = "safe";

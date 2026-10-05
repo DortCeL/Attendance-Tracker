@@ -35,7 +35,7 @@ export function entriesForDate(
   if (!beforeTerm) {
     for (const course of courses) {
       for (const slot of course.slots) {
-        if (slot.day !== weekday) continue;
+        if (slot.day !== weekday || (slot.from && date < slot.from)) continue;
         const record = bySlot.get(slot.id);
         if (record) used.add(slot.id);
         entries.push({
@@ -95,7 +95,8 @@ export function unmarkedBefore(
     for (; date < until; date = addDays(date, 1)) {
       const weekday = weekdayOf(date);
       for (const slot of course.slots) {
-        if (slot.day !== weekday || marked.has(`${date}|${slot.id}`)) continue;
+        if (slot.day !== weekday || (slot.from && date < slot.from)) continue;
+        if (marked.has(`${date}|${slot.id}`)) continue;
         out.push({
           key: `${date}-${slot.id}`,
           course,

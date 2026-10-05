@@ -8,6 +8,7 @@ import {
   type Slot,
 } from "~/lib/types";
 import { COURSE_COLORS } from "~/lib/colors";
+import { todayISO } from "~/lib/date";
 import { uid } from "~/lib/uid";
 
 export class CourseDB extends Dexie {
@@ -44,9 +45,27 @@ export const db = new CourseDB();
 
 // ---------- Courses ----------
 
-export async function saveCourse(course: Course): Promise<number> {
+/**
+ * Once a course has attendance, slots added to it (or moved to another weekday) only apply from
+ * `today`, so earlier weeks don't fill up with classes that never happened. A moved slot gets a new
+ * id; its old records stay counted and show up as leftovers on their dates.
+ */
+async function dateNewSlots(courseId: number, previous: Slot[], next: Slot[], today: string): Promise<Slot[]> {
+  const inUse = (await db.records.where("courseId").equals(courseId).count()) > 0;
+  if (!inUse) return next;
+  return next.map((s) => {
+    const old = previous.find((p) => p.id === s.id);
+    if (!old) return { ...s, from: s.from ?? today };
+    if (old.day !== s.day) return { ...s, id: uid(), from: today };
+    return s;
+  });
+}
+
+export async function saveCourse(course: Course, today: string = todayISO()): Promise<number> {
   if (course.id != null) {
-    await db.courses.put(course);
+    const existing = await db.courses.get(course.id);
+    const slots = existing ? await dateNewSlots(course.id, existing.slots, course.slots, today) : course.slots;
+    await db.courses.put({ ...course, slots });
     return course.id;
   }
   return db.courses.add({ ...course, createdAt: course.createdAt || Date.now() });
@@ -68,7 +87,7 @@ export interface CourseImport {
   existingId?: number;
 }
 
-export async function importCourses(items: CourseImport[]) {
+export async function importCourses(items: CourseImport[], today: string = todayISO()) {
   const merged: CourseImport[] = [];
   const byExisting = new Map<number, CourseImport>();
   for (const item of items) {
@@ -82,16 +101,17 @@ export async function importCourses(items: CourseImport[]) {
     }
   }
 
-  await db.transaction("rw", db.courses, async () => {
+  await db.transaction("rw", db.courses, db.records, async () => {
     let colorIndex = await db.courses.count();
     for (const item of merged) {
       const existing = item.existingId != null ? await db.courses.get(item.existingId) : undefined;
       if (existing) {
         // Reuse ids of slots that didn't change so their attendance history stays attached.
-        const slots = item.slots.map((s) => {
+        const matched = item.slots.map((s) => {
           const same = existing.slots.find((e) => e.day === s.day && e.start === s.start);
-          return same ? { ...s, id: same.id } : s;
+          return same ? { ...s, id: same.id, from: same.from } : s;
         });
+        const slots = await dateNewSlots(existing.id!, existing.slots, matched, today);
         await db.courses.put({
           ...existing,
           code: existing.code || item.code,
