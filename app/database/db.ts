@@ -5,6 +5,7 @@ import {
   type AttendanceStatus,
   type Course,
   type Settings,
+  type Slot,
 } from "~/lib/types";
 import { COURSE_COLORS } from "~/lib/colors";
 import { uid } from "~/lib/uid";
@@ -55,6 +56,60 @@ export async function deleteCourse(id: number) {
   await db.transaction("rw", db.courses, db.records, async () => {
     await db.records.where("courseId").equals(id).delete();
     await db.courses.delete(id);
+  });
+}
+
+export interface CourseImport {
+  title: string;
+  code: string;
+  lecturer: string;
+  slots: Slot[];
+  /** Replace this existing course's schedule instead of creating a new course. */
+  existingId?: number;
+}
+
+export async function importCourses(items: CourseImport[]) {
+  const merged: CourseImport[] = [];
+  const byExisting = new Map<number, CourseImport>();
+  for (const item of items) {
+    const target = item.existingId != null ? byExisting.get(item.existingId) : undefined;
+    if (target) {
+      target.slots = [...target.slots, ...item.slots];
+    } else {
+      const copy = { ...item, slots: [...item.slots] };
+      merged.push(copy);
+      if (item.existingId != null) byExisting.set(item.existingId, copy);
+    }
+  }
+
+  await db.transaction("rw", db.courses, async () => {
+    let colorIndex = await db.courses.count();
+    for (const item of merged) {
+      const existing = item.existingId != null ? await db.courses.get(item.existingId) : undefined;
+      if (existing) {
+        // Reuse ids of slots that didn't change so their attendance history stays attached.
+        const slots = item.slots.map((s) => {
+          const same = existing.slots.find((e) => e.day === s.day && e.start === s.start);
+          return same ? { ...s, id: same.id } : s;
+        });
+        await db.courses.put({
+          ...existing,
+          code: existing.code || item.code,
+          lecturer: existing.lecturer || item.lecturer,
+          slots,
+        });
+      } else {
+        await db.courses.add({
+          title: item.title,
+          code: item.code,
+          lecturer: item.lecturer,
+          color: COURSE_COLORS[colorIndex++ % COURSE_COLORS.length],
+          slots: item.slots,
+          threshold: null,
+          createdAt: Date.now(),
+        });
+      }
+    }
   });
 }
 
