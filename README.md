@@ -33,6 +33,17 @@ bun run dev        # http://localhost:5173
 bun run typecheck
 ```
 
+## Testing
+
+```bash
+bun run test            # everything (unit tests + semester simulations)
+bun run test:semester   # just the 14-week simulations, with printed reports
+```
+
+The tests run the real storage, schedule and stats code against an in-memory IndexedDB (`fake-indexeddb`). `tests/semester.test.ts` plays out whole 14-week terms on the sample routine (holidays, midterms, sick weeks, alternating labs, makeup classes, forgotten marks, routine changes...) and prints a per-course report with a week-by-week percentage chart and every warning the app would have shown. The app's numbers are cross-checked against an independent tally.
+
+## Preview build
+
 The service worker is only registered in production builds, so use the preview server to test offline/install behaviour:
 
 ```bash
@@ -75,4 +86,8 @@ public/
 scripts/
   generate-icons.mjs    renders the PNG/ICO icons (bun run icons)
   postbuild.mjs         stamps sw.js with the build's asset list + version
+tests/
+  unit/                 dates, stats, alerts, schedule, storage
+  semester.test.ts      14-week semester simulations
+  helpers/              simulator, report printer, shared invariants
 ```
