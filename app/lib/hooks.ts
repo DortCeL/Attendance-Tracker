@@ -1,12 +1,11 @@
 import { useLiveQuery } from "dexie-react-hooks";
 import { useCallback } from "react";
 import { db, getSettings, setAttendance } from "~/database/db";
-import { computeStats, effectiveThreshold, type RiskLevel } from "./stats";
+import { computeStats, effectiveThreshold } from "./stats";
 import { DEFAULT_SETTINGS, type AttendanceStatus, type Course, type Settings } from "./types";
 import { useToast } from "~/components/Toast";
+import { missAlert } from "./alerts";
 import { notify } from "./notify";
-
-const RISK_RANK: Record<RiskLevel, number> = { none: 0, safe: 1, warning: 2, danger: 3 };
 
 export function useSettings(): Settings {
   return useLiveQuery(getSettings, [], DEFAULT_SETTINGS);
@@ -54,24 +53,10 @@ export function useMarkAttendance() {
         threshold,
         settings.warnMargin,
       );
-      if (after.risk !== "warning" && after.risk !== "danger") return;
-
-      const pct = after.percent!.toFixed(1);
-      const title =
-        after.risk === "danger"
-          ? `${course.title} is below ${threshold}%`
-          : `${course.title} is getting close to ${threshold}%`;
-      const body =
-        after.risk === "danger"
-          ? `Now at ${pct}%. Attend the next ${after.needToAttend} class${after.needToAttend === 1 ? "" : "es"} to recover.`
-          : after.canSkip === 0
-            ? `Now at ${pct}%. Missing one more class drops you below the threshold.`
-            : `Now at ${pct}%. You can only miss ${after.canSkip} more.`;
-
-      toast({ title, body, tone: after.risk === "danger" ? "danger" : "warning" });
-      if (settings.notifications && RISK_RANK[after.risk] >= RISK_RANK[before.risk]) {
-        notify(title, body);
-      }
+      const alert = missAlert(course.title, before, after, settings.notifications);
+      if (!alert) return;
+      toast({ title: alert.title, body: alert.body, tone: alert.tone });
+      if (alert.notify) notify(alert.title, alert.body);
     },
     [toast],
   );
